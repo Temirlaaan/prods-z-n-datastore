@@ -1,0 +1,15 @@
+# HTTP clients
+requests>=2.31.0
+urllib3>=2.0.0
+
+# NetBox API
+pynetbox>=7.3.0
+
+# Redis
+redis>=5.0.0
+
+# Environment
+python-dotenv>=1.0.0
+
+# Scheduling (optional, for standalone mode)
+schedule>=1.2.0
