@@ -11,7 +11,7 @@ from app.helpers import (
     extract_manufacturer_from_hardware,
     extract_model_from_hardware,
     get_site_name_for_group,
-    now_iso,
+    now_date,
 )
 
 
@@ -79,7 +79,7 @@ class NetBoxSync:
         # Custom fields
         custom_fields = {
             "zabbix_hostid": hostid,
-            "last_sync": now_iso(),
+            "last_sync": now_date(),
             "os_version": data.get("os", ""),
             "serial_a": data.get("serial_a", ""),
             "serial_b": data.get("serial_b", ""),
@@ -139,7 +139,7 @@ class NetBoxSync:
             update_data["custom_fields"]["hardware_info"] = data.get("hardware", "")
 
         # Всегда обновляем last_sync
-        update_data["custom_fields"]["last_sync"] = now_iso()
+        update_data["custom_fields"]["last_sync"] = now_date()
 
         # Убираем пустые custom_fields
         if not update_data["custom_fields"]:
@@ -184,7 +184,7 @@ class NetBoxSync:
 
         return self.client.update_device(
             device_id,
-            {"custom_fields": {"last_sync": now_iso()}},
+            {"custom_fields": {"last_sync": now_date()}},
         ) is not None
 
     def get_site_name(self, dc_group: str) -> Optional[str]:

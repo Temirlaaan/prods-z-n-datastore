@@ -202,6 +202,11 @@ def now_iso() -> str:
     return datetime.utcnow().isoformat()
 
 
+def now_date() -> str:
+    """Текущая дата в формате YYYY-MM-DD (для NetBox custom fields)."""
+    return datetime.utcnow().strftime("%Y-%m-%d")
+
+
 def parse_iso(iso_str: str) -> Optional[datetime]:
     """Парсинг ISO строки в datetime."""
     if not iso_str:
