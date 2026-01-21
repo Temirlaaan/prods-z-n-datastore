@@ -169,18 +169,23 @@ class NetBoxSync:
         device = self.client.get_device_by_zabbix_id(zabbix_hostid)
         return device.id if device else None
 
-    def update_last_sync(self, device_id: int) -> bool:
+    def update_last_sync(self, device_id: int, ip: str = None) -> bool:
         """
-        Обновление времени последней синхронизации.
+        Обновление времени последней синхронизации и проверка IP.
 
         Args:
             device_id: ID устройства в NetBox
+            ip: IP адрес для проверки/назначения
 
         Returns:
             True если успешно
         """
         if DRY_RUN:
             return True
+
+        # Проверяем и назначаем IP если нужно
+        if ip:
+            self.client.assign_primary_ip(device_id, ip)
 
         return self.client.update_device(
             device_id,

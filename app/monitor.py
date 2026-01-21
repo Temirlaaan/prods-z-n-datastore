@@ -138,6 +138,9 @@ class DataStoreMonitor:
             if not netbox_id:
                 # Ищем в NetBox по zabbix_hostid
                 netbox_id = self.sync.find_device_by_zabbix_id(hostid)
+                if netbox_id:
+                    # Сохраняем в кэш для следующих запусков
+                    self.cache.set_netbox_id(hostid, netbox_id)
 
             if netbox_id:
                 # Устройство существует - проверяем изменения
@@ -210,9 +213,9 @@ class DataStoreMonitor:
         prev_hash = self.cache.get_hash(hostid)
 
         if prev_hash == current_hash:
-            # Нет изменений - только обновляем last_sync
+            # Нет изменений - только обновляем last_sync и проверяем IP
             logger.debug(f"Датастор {name}: без изменений")
-            self.sync.update_last_sync(netbox_id)
+            self.sync.update_last_sync(netbox_id, data.get("ip"))
             self.stats["unchanged"] += 1
             return
 
@@ -238,10 +241,10 @@ class DataStoreMonitor:
                 self.stats["errors"] += 1
         else:
             # Хэш изменился, но поля не изменились (странно)
-            # Просто обновляем кэш
+            # Просто обновляем кэш и проверяем IP
             self.cache.set_hash(hostid, current_hash)
             self.cache.set_data(hostid, data)
-            self.sync.update_last_sync(netbox_id)
+            self.sync.update_last_sync(netbox_id, data.get("ip"))
             self.stats["unchanged"] += 1
 
     def _check_missing_hosts(self, current_hostids: set) -> None:

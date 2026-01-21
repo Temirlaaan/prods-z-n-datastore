@@ -281,32 +281,84 @@ class NetBoxClient:
             logger.error(f"Ошибка получения/создания IP {ip}: {e}")
             return None
 
+    def get_or_create_interface(
+        self,
+        device_id: int,
+        name: str = "mgmt",
+    ) -> Optional[object]:
+        """Получение или создание интерфейса устройства."""
+        try:
+            # Поиск существующего интерфейса
+            interfaces = self.api.dcim.interfaces.filter(
+                device_id=device_id,
+                name=name,
+            )
+            interface = next(iter(interfaces), None)
+
+            if interface:
+                return interface
+
+            # Создание нового интерфейса
+            interface = self.api.dcim.interfaces.create({
+                "device": device_id,
+                "name": name,
+                "type": "other",  # Management interface
+            })
+            logger.debug(f"Создан интерфейс {name} для устройства id={device_id}")
+            return interface
+        except Exception as e:
+            logger.error(f"Ошибка создания интерфейса: {e}")
+            return None
+
     def assign_primary_ip(
         self,
         device_id: int,
         ip_address: str,
     ) -> bool:
-        """Назначение primary IP устройству."""
+        """Назначение primary IP устройству через интерфейс."""
         if not ip_address:
             return False
 
-        try:
-            ip_obj = self.get_or_create_ip_address(ip_address)
-            if not ip_obj:
-                return False
+        # Добавляем маску если нет
+        if "/" not in ip_address:
+            ip_address_with_mask = f"{ip_address}/32"
+        else:
+            ip_address_with_mask = ip_address
 
+        try:
             device = self.api.dcim.devices.get(device_id)
             if not device:
                 return False
 
-            # Обновляем primary_ip4
+            # 1. Создаём или получаем интерфейс
+            interface = self.get_or_create_interface(device_id, "mgmt")
+            if not interface:
+                return False
+
+            # 2. Проверяем, есть ли уже этот IP
+            ip_addresses = self.api.ipam.ip_addresses.filter(address=ip_address_with_mask)
+            ip_obj = next(iter(ip_addresses), None)
+
+            if ip_obj:
+                # IP существует - проверяем привязку
+                if ip_obj.assigned_object_id != interface.id:
+                    # Перепривязываем к нашему интерфейсу
+                    ip_obj.assigned_object_type = "dcim.interface"
+                    ip_obj.assigned_object_id = interface.id
+                    ip_obj.save()
+            else:
+                # Создаём IP и сразу привязываем к интерфейсу
+                ip_obj = self.api.ipam.ip_addresses.create({
+                    "address": ip_address_with_mask,
+                    "status": "active",
+                    "assigned_object_type": "dcim.interface",
+                    "assigned_object_id": interface.id,
+                })
+                logger.info(f"Создан IP адрес {ip_address_with_mask} (id={ip_obj.id})")
+
+            # 3. Назначаем как primary_ip4
             device.primary_ip4 = ip_obj.id
             device.save()
-
-            # Привязываем IP к устройству (assigned_object)
-            ip_obj.assigned_object_type = "dcim.device"
-            ip_obj.assigned_object_id = device_id
-            ip_obj.save()
 
             logger.debug(f"Назначен primary IP {ip_address} устройству id={device_id}")
             return True
