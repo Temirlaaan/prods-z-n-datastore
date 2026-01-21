@@ -3,7 +3,7 @@ version: '3.8'
 services:
   monitor:
     build: .
-    container_name: datastore-monitor
+    container_name: ds-netbox-monitor
     restart: unless-stopped
     env_file:
       - .env
@@ -16,7 +16,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: datastore-redis
+    container_name: ds-netbox-redis
     restart: unless-stopped
     command: redis-server --port 6380 --appendonly yes
     volumes:
@@ -29,7 +29,7 @@ services:
 
   cron:
     image: alpine
-    container_name: datastore-cron
+    container_name: ds-netbox-cron
     restart: unless-stopped
     depends_on:
       - monitor
@@ -39,7 +39,7 @@ services:
     command: >
       sh -c "
       apk add --no-cache docker-cli &&
-      echo '0 9 * * 1 docker exec datastore-monitor python -m app.monitor >> /app/logs/cron.log 2>&1' > /etc/crontabs/root &&
+      echo '0 9 * * 1 docker exec ds-netbox-monitor python -m app.monitor >> /app/logs/cron.log 2>&1' > /etc/crontabs/root &&
       crond -f -l 2
       "
 
