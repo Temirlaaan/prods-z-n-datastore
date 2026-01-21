@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  monitor:
+    build: .
+    container_name: datastore-monitor
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./logs:/app/logs
+    depends_on:
+      redis:
+        condition: service_healthy
+    command: tail -f /dev/null
+
+  redis:
+    image: redis:7-alpine
+    container_name: datastore-redis
+    restart: unless-stopped
+    command: redis-server --port 6380 --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-p", "6380", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  cron:
+    image: alpine
+    container_name: datastore-cron
+    restart: unless-stopped
+    depends_on:
+      - monitor
+    volumes:
+      - ./logs:/app/logs
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: >
+      sh -c "
+      apk add --no-cache docker-cli &&
+      echo '0 9 * * 1 docker exec datastore-monitor python -m app.monitor >> /app/logs/cron.log 2>&1' > /etc/crontabs/root &&
+      crond -f -l 2
+      "
+
+volumes:
+  redis_data:
