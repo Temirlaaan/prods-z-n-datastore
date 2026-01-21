@@ -38,10 +38,12 @@ class ZabbixClient:
             "id": 1,
         }
 
+        # Zabbix 7.0+ использует Authorization header вместо параметра auth
+        headers = {"Content-Type": "application/json-rpc"}
         if self.auth_token:
-            payload["auth"] = self.auth_token
+            headers["Authorization"] = f"Bearer {self.auth_token}"
 
-        response = self.session.post(self.url, json=payload, timeout=30)
+        response = self.session.post(self.url, json=payload, headers=headers, timeout=30)
         response.raise_for_status()
         result = response.json()
 
@@ -69,14 +71,9 @@ class ZabbixClient:
 
     def logout(self) -> None:
         """Выход из Zabbix API."""
-        if self.auth_token:
-            try:
-                self._request("user.logout", {})
-                logger.debug("Выход из Zabbix выполнен")
-            except Exception as e:
-                logger.warning(f"Ошибка при выходе из Zabbix: {e}")
-            finally:
-                self.auth_token = None
+        # Zabbix 7.0+ не требует явного logout при использовании API токенов
+        self.auth_token = None
+        logger.debug("Сессия Zabbix закрыта")
 
     def get_host_groups(self, group_names: list[str]) -> list[dict]:
         """Получение групп хостов по именам."""
