@@ -111,12 +111,13 @@ class ZabbixClient:
         logger.info(f"Найдено {len(groups)} групп: {[g['name'] for g in groups]}")
 
         # Получаем хосты
+        # Zabbix 7.0+: selectGroups -> selectHostGroups
         hosts = self._request(
             "host.get",
             {
                 "output": ["hostid", "host", "name", "status"],
                 "groupids": group_ids,
-                "selectGroups": ["groupid", "name"],
+                "selectHostGroups": ["groupid", "name"],
                 "selectInterfaces": ["ip", "main", "type"],
                 "selectInventory": [
                     "name",
@@ -129,9 +130,10 @@ class ZabbixClient:
         )
 
         # Добавляем информацию о группе DC к каждому хосту
+        # Zabbix 7.0+: groups -> hostgroups
         for host in hosts:
             host["_dc_group"] = None
-            for group in host.get("groups", []):
+            for group in host.get("hostgroups", []):
                 if group["name"] in group_names:
                     host["_dc_group"] = group["name"]
                     break
