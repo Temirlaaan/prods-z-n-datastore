@@ -57,7 +57,7 @@ class ZabbixClient:
             self.auth_token = self._request(
                 "user.login",
                 {
-                    "user": ZABBIX_USER,
+                    "username": ZABBIX_USER,
                     "password": ZABBIX_PASSWORD,
                 },
             )
